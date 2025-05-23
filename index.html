@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chatbot EtdIA</title>
+    <style>
+        /* Styles généraux pour le conteneur du chatbot */
+        #etdcia-chat {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            font-family: Arial, sans-serif; /* Police par défaut */
+        }
+
+        /* Style du bouton d'ouverture du chat */
+        #etdcia-chat button {
+            background-color: #1e40af;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: background-color 0.3s ease;
+        }
+
+        #etdcia-chat button:hover {
+            background-color: #0d2a70;
+        }
+
+        /* Style de la boîte de chat */
+        #chat-box {
+            display: none;
+            width: 300px;
+            max-height: 450px;
+            background: white;
+            border: 2px solid #1e40af;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            overflow: hidden;
+            margin-top: 10px;
+            flex-direction: column; /* Organise les éléments en colonne */
+        }
+
+        /* En-tête du chat */
+        #chat-box .chat-header {
+            background-color: #1e40af;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Zone de contenu des messages */
+        #chat-content {
+            padding: 10px;
+            flex-grow: 1; /* Prend l'espace disponible */
+            overflow-y: auto; /* Permet le défilement */
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        /* Conteneur pour l'entrée utilisateur */
+        #chat-box .chat-input-area {
+            padding: 10px;
+            border-top: 1px solid #ccc;
+            display: flex; /* Pour aligner input et bouton */
+            align-items: center;
+        }
+
+        #user-input {
+            flex-grow: 1; /* L'input prend le maximum d'espace */
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
+        #chat-box .chat-input-area button {
+            background-color: #1e40af;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Styles des messages */
+        .message-container {
+            display: flex;
+            align-items: flex-start; /* Aligne les éléments en haut */
+            margin-bottom: 10px;
+            word-break: break-word; /* Casse les mots longs */
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%; /* Forme circulaire */
+            margin-right: 8px;
+            flex-shrink: 0; /* Empêche l'avatar de rétrécir */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            overflow: hidden; /* Pour s'assurer que l'image ne dépasse pas */
+        }
+
+        .avatar.etdcia {
+            background-color: transparent; /* Fond transparent si image */
+        }
+
+        .avatar.user {
+            background-color: #4CAF50; /* Vert pour l'utilisateur */
+        }
+        
+        .avatar.etdcia img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* S'assure que l'image remplit l'espace */
+        }
+
+        .message-bubble {
+            padding: 8px 12px;
+            border-radius: 12px;
+            max-width: 75%;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message-bubble.etdcia {
+            background-color: #f1f1f1;
+            align-self: flex-start; /* Aligne à gauche */
+        }
+
+        .message-bubble.user {
+            background-color: #DCF8C6; /* Couleur bulle utilisateur */
+            align-self: flex-end; /* Aligne à droite */
+            margin-left: auto; /* Pousse à droite */
+            text-align: right; /* Texte aligné à droite dans la bulle */
+        }
+        
+        /* Styles pour le message de bienvenue défilant */
+        .welcome-marquee-container {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            margin-bottom: 10px;
+        }
+
+        .welcome-marquee {
+            display: inline-block;
+            animation: welcomeMarquee 15s linear forwards; /* Dure 15s, puis s'arrête */
+            font-style: italic;
+            color: #555;
+            padding-left: 100%; /* Commence hors de l'écran */
+        }
+
+        @keyframes welcomeMarquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-100%); } /* Défile jusqu'à sortir de l'écran */
+        }
+
+        /* Suggestions de questions */
+        .suggested-questions-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 10px;
+        }
+        .suggested-questions-list li {
+            cursor: pointer;
+            color: #1e40af;
+            text-decoration: underline;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        .suggested-questions-list li:hover {
+            color: #0d2a70;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="etdcia-chat">
+    <button onclick="toggleChat()">
+        💬 Etdcia
+    </button>
+    <div id="chat-box">
+        <div class="chat-header">Etdcia - Assistant Etudencia</div>
+        <div id="chat-content">
+            </div>
+        <div class="chat-input-area">
+            <input id="user-input" type="text" placeholder="Pose ta question..." onkeydown="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()">Envoyer</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const faqData = {
+        "choisir bonne formation": "Commence par définir ton projet professionnel, puis cherche les formations reconnues liées à ce domaine sur Campus France.",
+        "différence licence bts": "La licence dure 3 ans (universitaire), le BTS 2 ans (professionnel, souvent en alternance).",
+        "changer filière bac": "Oui, en fonction de ton dossier, tu peux demander une réorientation dans une autre filière.",
+        "postuler plusieurs formations": "Oui, jusqu’à 7 vœux sur Campus France, dans une même formation ou des domaines différents.",
+        "domaines les plus demandés": "Informatique, gestion, ingénierie, santé, langues, commerce, droit, etc.",
+        "formation reconnue": "Vérifie si l’établissement est public ou reconnu par l’État, et consulte le RNCP (France Compétences).",
+        "iut université école": "L’IUT propose des formations techniques (BUT), l’université est plus généraliste, l’école (commerce, ingénieur) est plus sélective.",
+        "formation alternance": "C’est une formation où tu alternes entre les cours et une entreprise. Tu es payé pendant tes études.",
+        "études en anglais": "Oui, de plus en plus d’universités proposent des programmes internationaux en anglais.",
+        "âge limite étudier": "Il n’y a pas d’âge limite officiel, mais certains établissements peuvent avoir des critères spécifiques.",
+        "qu’est-ce que campus france": "C’est l’organisme officiel qui gère les procédures d’admission des étudiants étrangers en France.",
+        "passer obligatoirement campus france": "Oui, sauf pour certaines écoles privées. La plupart des étudiants doivent passer par cette plateforme.",
+        "coût procédure campus france": "Les frais varient selon le pays (environ 50 à 100 €), à payer lors du dépôt de dossier.",
+        "modifier mon dossier": "Non, sauf si Campus France te le permet après un rejet ou un complément.",
+        "passer entretien campus france": "Oui, dans la plupart des cas. Il permet de vérifier ton projet et ta motivation.",
+        "combien vœux campus france": "Tu peux formuler jusqu’à 7 vœux (et jusqu'à 3 par université maximum).",
+        "quand déposer dossier campus france": "Entre novembre et mars pour la rentrée de septembre. Vérifie les dates selon ton pays.",
+        "savoir dossier bon": "Il doit être complet, cohérent, avec des documents clairs et un projet d’études logique.",
+        "rédiger lettre motivation": "Structure-la en expliquant ton parcours, ton choix d’études, et ton projet professionnel.",
+        "postuler deux niveaux licence master": "Oui, mais tu dois justifier chaque choix clairement dans ta lettre de motivation.",
+        "documents fournir campus france": "Pièce d’identité, diplômes, relevés de notes, lettre de motivation, CV, photo, etc.",
+        "traduire mes documents": "Oui, en français par un traducteur assermenté si les originaux sont dans une autre langue.",
+        "créer bon cv étudiant": "Utilise un format clair, une page, avec ton parcours scolaire, compétences et langues.",
+        "scanner documents téléphone": "Oui, mais ils doivent être lisibles, sans ombres ni flou.",
+        "fournir lettre recommandation": "Pas obligatoire mais fortement recommandée pour le master ou les écoles.",
+        "pages lettre motivation": "Entre 1 et 1,5 page maximum.",
+        "manque relevé notes": "Oui, tout dossier incomplet peut être rejeté.",
+        "certificat langue française": "Oui pour certaines formations. Le TCF, DELF, DALF ou TEF sont les plus demandés.",
+        "mettre certificats attestations dossier": "Oui, s’ils sont utiles pour justifier ton parcours ou ton engagement.",
+        "diplôme provisoire accepté": "Oui s’il est délivré par ton établissement et signé.",
+        // Anciennes questions, si vous souhaitez les garder en direct
+        "quels sont les documents pour campus france": "Les documents requis incluent : relevés de notes, diplômes, pièce d'identité, lettre de motivation, CV, justificatifs de langues et frais de dossier.",
+        "comment obtenir le visa étudiant": "Après l’acceptation par Campus France, tu dois déposer ta demande sur France-Visas, prendre rendez-vous au consulat et fournir les documents requis.",
+        "quel est le coût des études en france": "Les frais varient selon l’établissement : environ 170 € à 600 € par an pour les universités publiques, plus dans les écoles privées.",
+        "puis-je travailler pendant mes études": "Oui, tu as le droit de travailler jusqu’à 964 heures/an (environ 20h/semaine) avec un visa étudiant.",
+        "comment trouver un logement étudiant": "Tu peux passer par le CROUS, les résidences privées, les plateformes étudiantes, ou via Etudencia qui t’aide dans la recherche de logement."
+    };
+
+    // Liste des questions suggérées (celles qui s'affichent au début)
+    const suggestedQuestions = [
+        "Quels sont les documents pour Campus France ?",
+        "Comment obtenir un visa étudiant ?",
+        "Puis-je travailler pendant mes études ?",
+        "Comment trouver un logement étudiant ?",
+        "Quel est le coût des études en France ?",
+        "Comment choisir la bonne formation en France ?",
+        "C’est quoi une formation en alternance ?",
+        "Dois-je passer un entretien Campus France ?"
+    ];
+
+    // Message de bienvenue défilant
+    const welcomeMarqueeText = "Bienvenue dans le Chatbot EtdIA d’Etudencia, je suis là pour répondre à toutes vos questions concernant la procédure d’étude en France. Bonne chance à vous.";
+
+    // Fonction pour ajouter un message à la boîte de chat
+    function addMessage(sender, text, avatarHtml = '') {
+        const content = document.getElementById("chat-content");
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('message-container');
+
+        const avatarDiv = document.createElement('div');
+        avatarDiv.classList.add('avatar');
+        avatarDiv.classList.add(sender); // 'etdcia' ou 'user'
+        avatarDiv.innerHTML = avatarHtml;
+
+        const bubbleDiv = document.createElement('div');
+        bubbleDiv.classList.add('message-bubble');
+        bubbleDiv.classList.add(sender); // 'etdcia' ou 'user'
+        bubbleDiv.innerHTML = text;
+
+        if (sender === 'user') {
+            messageContainer.style.justifyContent = 'flex-end'; // Pousser le message utilisateur à droite
+            messageContainer.appendChild(bubbleDiv);
+            messageContainer.appendChild(avatarDiv); // Avatar à droite
+        } else {
+            messageContainer.appendChild(avatarDiv); // Avatar à gauche
+            messageContainer.appendChild(bubbleDiv);
+        }
+
+        content.appendChild(messageContainer);
+        content.scrollTop = content.scrollHeight; // Scroll vers le bas
+    }
+
+    // Fonction pour ouvrir/fermer le chat
+    function toggleChat() {
+        const box = document.getElementById("chat-box");
+        const isOpen = box.style.display === "block";
+
+        if (!isOpen) {
+            box.style.display = "flex"; // Utilise flex pour l'affichage
+            displayWelcomeAndSuggestions();
+        } else {
+            box.style.display = "none";
+        }
+    }
+
+    // Affiche le message de bienvenue et les suggestions
+    function displayWelcomeAndSuggestions() {
+        const content = document.getElementById("chat-content");
+        content.innerHTML = ''; // Nettoie le chat à l'ouverture
+
+        // Ajoute le message de bienvenue défilant
+        const welcomeMarqueeDiv = document.createElement('div');
+        welcomeMarqueeDiv.classList.add('welcome-marquee-container');
+        welcomeMarqueeDiv.innerHTML = `<div class="welcome-marquee">${welcomeMarqueeText}</div>`;
+        content.appendChild(welcomeMarqueeDiv);
+
+        // Ajoute les suggestions après un court délai
+        setTimeout(() => {
+            let suggestionsHtml = "<div style='font-style: italic; margin-top: 15px;'>Questions que tu peux poser :</div><ul class='suggested-questions-list'>";
+            suggestedQuestions.forEach(q => {
+                suggestionsHtml += `<li onclick='autoAsk("${q.replace(/"/g, '&quot;')}")'>${q}</li>`;
+            });
+            suggestionsHtml += "</ul>";
+            addMessage('etdcia', suggestionsHtml, '<img src="https://example.com/robot-avatar.png" alt="Etdcia">'); // Remplacez par l'URL de votre logo robot
+            content.scrollTop = content.scrollHeight;
+        }, 1000); // Délai pour que le message défilant commence
+    }
+
+    // Envoie un message
+    function sendMessage() {
+        const input = document.getElementById("user-input");
+        const question = input.value.trim();
+        if (!question) return;
+
+        addMessage('user', question, 'Toi'); // Affiche le message de l'utilisateur
+        input.value = ""; // Vide l'input
+
+        const response = getResponse(question.toLowerCase()); // Traite la question
+        setTimeout(() => {
+            addMessage('etdcia', response, '<img src="https://example.com/robot-avatar.png" alt="Etdcia">'); // Remplacez par l'URL de votre logo robot
+        }, 500); // Délai de réponse du bot
+    }
+
+    // Obtient la réponse du bot
+    function getResponse(question) {
+        // 1. Recherche de correspondance exacte ou très proche
+        for (const key in faqData) {
+            // Utilise une correspondance plus stricte si la question contient la clé exacte
+            if (question.includes(key)) {
+                return faqData[key];
+            }
+        }
+
+        // 2. Si pas de correspondance exacte, recherche par mots-clés et suggère des questions
+        const questionWords = question.split(' ').filter(word => word.length > 2); // Mots de plus de 2 caractères
+        const matchingSuggestions = new Set(); // Pour éviter les doublons
+
+        for (const key in faqData) {
+            const faqKeyWords = key.split(' ').filter(word => word.length > 2);
+            const commonWords = questionWords.filter(word => faqKeyWords.includes(word));
+
+            if (commonWords.length > 0) { // Si au moins un mot-clé correspond
+                // Trouver la question originale dans suggestedQuestions ou prendre la clé de FAQ
+                const originalQuestion = suggestedQuestions.find(q => q.toLowerCase().includes(key)) || key;
+                matchingSuggestions.add(originalQuestion);
+            }
+        }
+
+        if (matchingSuggestions.size > 0) {
+            let suggestionsHtml = `Je n’ai pas trouvé de réponse directe. As-tu voulu dire :<ul class='suggested-questions-list'>`;
+            Array.from(matchingSuggestions).slice(0, 3).forEach(q => { // Limite à 3 suggestions
+                suggestionsHtml += `<li onclick='autoAsk("${q.replace(/"/g, '&quot;')}")'>${q}</li>`;
+            });
+            suggestionsHtml += `</ul>Si ce n'est pas ça, essaie de reformuler.`;
+            return suggestionsHtml;
+        }
+
+        // 3. Aucune correspondance trouvée
+        return "Je n’ai pas compris ta question. Essaie avec des mots simples ou choisis une question suggérée.";
+    }
+
+    // Fonction pour les questions auto-suggérées
+    function autoAsk(question) {
+        document.getElementById("user-input").value = question;
+        sendMessage();
+    }
+
+    // Au chargement de la page, initialise le chat avec les suggestions (chat fermé)
+    // Ne pas afficher le message de bienvenue et les suggestions ici, mais seulement à l'ouverture du chatbox
+    // window.onload = function() {}; // Cette ligne est commentée car displayWelcomeAndSuggestions() est appelée par toggleChat()
+</script>
+
+</body>
+</html>
